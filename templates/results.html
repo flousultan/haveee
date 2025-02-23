@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Analysis Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .results-table table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed; /* Ensures the table layout is fixed */
+        }
+        .results-table th, .results-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            word-wrap: break-word; /* Ensures long words break to fit the cell */
+            overflow: hidden; /* Ensures overflow content is hidden */
+        }
+        .results-table th {
+            background-color: #4CAF50;
+            color: white;
+            text-align: left;
+        }
+        .results-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .results-table tr:hover {
+            background-color: #ddd;
+        }
+        .alert {
+            color: red;
+            font-weight: bold;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; /* Position the tooltip above the text */
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Contract Analysis Results</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="contract-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Paragraph Reference</th>
+                        <th>Information</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Lease Premises</td>
+                        <td>1</td>
+                        <td>Suite B, consisting of approximately 4300 square feet</td>
+                    </tr>
+                    <tr>
+                        <td>Lease Term</td>
+                        <td>2</td>
+                        <td>5 years from Commencement Date</td>
+                    </tr>
+                    <tr>
+                        <td>Early Termination</td>
+                        <td>2.1</td>
+                        <td>Tenant may terminate after first year with 120 days' notice and $4,220 termination fee</td>
+                    </tr>
+                    <tr>
+                        <td>Rent Amount</td>
+                        <td>3.1</td>
+                        <td>$11.50/SF, totaling $49,450 annually, payable monthly at $4,120.83</td>
+                    </tr>
+                    <tr>
+                        <td>Security Deposit</td>
+                        <td>3.2</td>
+                        <td>Equal to one month's Base Rent</td>
+                    </tr>
+                    <tr>
+                        <td>Annual Rent Escalation</td>
+                        <td>3.3</td>
+                        <td>3% annual increase</td>
+                    </tr>
+                    <tr>
+                        <td>Triple Net Expenses</td>
+                        <td>3.4</td>
+                        <td>Estimated at $6.47/SF, totaling $27,821 annually, payable monthly at $2,318.42</td>
+                    </tr>
+                    <tr>
+                        <td>Utilities</td>
+                        <td>4</td>
+                        <td>Tenant to pay $2.50/SF for electric and gas</td>
+                    </tr>
+                    <!-- Add more rows for other contract terms -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="button-group">
+            <a href="{{ url_for('download_csv') }}" class="btn">Download CSV</a>
+            <a href="/" class="btn">Upload Another</a>
+        </div>
+    </div>
+</body>
+</html>
