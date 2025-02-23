@@ -17,18 +17,58 @@ def read_docx(filepath):
     return "\n".join([para.text for para in doc.paragraphs])
 
 def generate_prompt(text):
-    prompt = (
-        "You are an AI contract analysis assistant specializing in commercial lease agreements. "
-        "Your task is to extract key contractual terms from the following document. "
-        "Return the extracted information in a structured format with the following columns:\n"
-        "1. Item - The contractual term (e.g., 'Rent Amount', 'Lease Duration').\n"
-        "2. Paragraph Reference - The section or paragraph number (if available).\n"
-        "3. Information - The extracted details.\n\n"
-        "Here is the document:\n\n"
-        f"{text}\n\n"
-        "Extract the information accurately and ensure completeness. "
-        "If any section is ambiguous, note that clarification may be needed."
-    )
+    prompt = """
+You are an expert lease analyst. Analyze the following commercial lease document and extract information into four specific sections:
+
+1. KEY LEASE INFORMATION TABLE
+Create a table with columns: Item | Paragraph Reference | Information
+Include:
+- Property Name
+- Property Address
+- Property ID/Number
+- Tenant Name
+- Rental Square Feet
+- Amendment Type (New Lease/Renewal/Holdover/Expansion/Contraction/Remeasurement/Termination/Amendment)
+- Lease Type (Office/Retail/Industrial)
+- Late Fee Details (Type, Amount, Grace Period)
+- Security Deposit Amount
+- Lease Holdover Amount/Rate
+- Tenant Contact Information (Billing, Phone, Email)
+- All Dates (Effective, Commencement, Expiration)
+- Suite Details (Number, Floor, Move-in/out dates, Square Feet)
+Use 'N/A' if information is not found.
+
+2. LEASE CHARGES TABLE
+Create a table with columns: Charge Type | Frequency | Start Date | End Date | Amount
+Include:
+- All mandatory charges with specific amounts
+- Charges that increase over time (show each period)
+- Convert to monthly amounts where needed
+- Format amounts with commas and two decimal places
+Exclude conditional charges.
+
+3. LEASE OPTIONS TABLE
+Create a table with columns: Option Type | Expiration Date | Latest Notice | Earliest Notice | Notice to Tenant | Reference
+Include only true legal options with predetermined terms.
+
+4. LEASE CLAUSES TABLE
+Create a table with columns: Section Title | Section Reference Number | Lease Clause
+Include verbatim language for all sections and subsections.
+
+FORMATTING RULES:
+- Use commas in numbers (e.g., 1,000.00)
+- Dates in MM/DD/YYYY format
+- Use specified options for Amendment Type, Lease Type, Late Fee Type
+- Present each section in a clearly formatted table
+- Use '|' as column separator
+- Start each new table with a clear header
+
+Here is the document to analyze:
+
+{text}
+
+Analyze thoroughly and ensure no critical information is omitted. If any details are unclear, note that clarification may be needed.
+"""
     return prompt
 
 def send_to_api(prompt):
@@ -80,3 +120,55 @@ def process_document(filepath):
     # Updated to match Claude 3 API response structure
     extracted_data = api_response.get("content")[0].get("text")
     return extracted_data
+
+def parse_api_response(response_text):
+    """Parse the API response into structured data"""
+    try:
+        # Split the response into sections
+        sections = response_text.split('\n\n')
+        
+        tables = {
+            'key_info': [],
+            'charges': [],
+            'options': [],
+            'clauses': []
+        }
+        
+        current_section = None
+        
+        for section in sections:
+            if 'KEY LEASE INFORMATION' in section.upper():
+                current_section = 'key_info'
+            elif 'LEASE CHARGES' in section.upper():
+                current_section = 'charges'
+            elif 'LEASE OPTIONS' in section.upper():
+                current_section = 'options'
+            elif 'LEASE CLAUSES' in section.upper():
+                current_section = 'clauses'
+            
+            if current_section and '|' in section:
+                rows = [row.strip() for row in section.split('\n') if row.strip() and '|' in row]
+                parsed_rows = []
+                for row in rows:
+                    # Skip header rows
+                    if 'Item' in row and 'Reference' in row:
+                        continue
+                    if '---' in row:
+                        continue
+                        
+                    cells = [cell.strip() for cell in row.split('|') if cell.strip()]
+                    if cells:
+                        parsed_rows.append(cells)
+                
+                tables[current_section].extend(parsed_rows)
+        
+        return tables
+    
+    except Exception as e:
+        print(f"Error parsing API response: {e}")
+        return {
+            'key_info': [],
+            'charges': [],
+            'options': [],
+            'clauses': []
+        }

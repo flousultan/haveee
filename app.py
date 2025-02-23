@@ -23,9 +23,18 @@ def index():
             filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
             file.save(filepath)
             
-            extracted_data = process_document(filepath)
-
-            return render_template("results.html", tables=extracted_data)
+            try:
+                tables = process_document(filepath)
+                return render_template(
+                    "results.html",
+                    key_info=tables['key_info'],
+                    charges=tables['charges'],
+                    options=tables['options'],
+                    clauses=tables['clauses']
+                )
+            except Exception as e:
+                print(f"Error processing document: {e}")
+                return render_template("results.html", error="Error processing document")
     return render_template("index.html")
 
 @app.route("/download")
