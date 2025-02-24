@@ -3,16 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contract Analysis</title>
+    <title>Lease Analysis Upload</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Upload Commercial Lease Document</h1>
-        <form action="/" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" required>
-            <button type="submit">Analyze</button>
-        </form>
+    <div class="upload-container">
+        <div class="upload-card">
+            <div class="upload-header">
+                <i class="fas fa-file-contract header-icon"></i>
+                <h1>Lease Document Analysis</h1>
+                <p class="subtitle">Upload your lease document for instant analysis</p>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form id="uploadForm" action="/" method="post" enctype="multipart/form-data">
+                <div class="file-upload-wrapper">
+                    <div class="file-upload-area" id="dropZone">
+                        <input type="file" name="file" id="fileInput" accept=".pdf,.docx" class="file-input">
+                        <div class="upload-content">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag & Drop your file here</p>
+                            <p class="small">or</p>
+                            <button type="button" class="browse-btn">Browse Files</button>
+                            <p class="file-types">Supported formats: PDF, DOCX</p>
+                        </div>
+                        <div class="selected-file" style="display: none;">
+                            <i class="fas fa-file-alt"></i>
+                            <span class="file-name"></span>
+                            <button type="button" class="remove-file">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" disabled>
+                    <span class="btn-text">Analyze Document</span>
+                    <div class="spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </button>
+            </form>
+
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-bolt"></i>
+                    <h3>Fast Analysis</h3>
+                    <p>Get instant insights from your lease documents</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-table"></i>
+                    <h3>Structured Data</h3>
+                    <p>View data in organized tables and download as CSV</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Secure</h3>
+                    <p>Your documents are processed securely</p>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('uploadForm');
+            const fileInput = document.getElementById('fileInput');
+            const dropZone = document.getElementById('dropZone');
+            const submitBtn = document.querySelector('.submit-btn');
+            const uploadContent = document.querySelector('.upload-content');
+            const selectedFile = document.querySelector('.selected-file');
+            const fileName = document.querySelector('.file-name');
+            const removeFileBtn = document.querySelector('.remove-file');
+            const browseBtn = document.querySelector('.browse-btn');
+
+            // Handle file selection
+            function handleFile(file) {
+                if (file) {
+                    fileName.textContent = file.name;
+                    uploadContent.style.display = 'none';
+                    selectedFile.style.display = 'flex';
+                    submitBtn.disabled = false;
+                } else {
+                    uploadContent.style.display = 'flex';
+                    selectedFile.style.display = 'none';
+                    submitBtn.disabled = true;
+                }
+            }
+
+            // File input change
+            fileInput.addEventListener('change', (e) => {
+                handleFile(e.target.files[0]);
+            });
+
+            // Browse button click
+            browseBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // Remove file
+            removeFileBtn.addEventListener('click', () => {
+                fileInput.value = '';
+                handleFile(null);
+            });
+
+            // Drag and drop
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                handleFile(e.dataTransfer.files[0]);
+                fileInput.files = e.dataTransfer.files;
+            });
+
+            // Form submission
+            form.addEventListener('submit', () => {
+                submitBtn.disabled = true;
+                submitBtn.querySelector('.btn-text').style.display = 'none';
+                submitBtn.querySelector('.spinner').style.display = 'inline-block';
+            });
+        });
+    </script>
 </body>
 </html>
