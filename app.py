@@ -1,9 +1,10 @@
 import os
-from flask import Flask, render_template, request, send_file, redirect, url_for, session, flash
+from flask import Flask, render_template, request, send_file, redirect, url_for, session, flash, jsonify
 from werkzeug.utils import secure_filename
 import pandas as pd
 from serverless_wsgi import handle_request
 from extract import process_document, parse_api_response
+from services.supabase import supabase_service
 import io
 
 app = Flask(__name__)
@@ -29,19 +30,28 @@ def index():
             return redirect(request.url)
             
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            file.save(filepath)
-            
             try:
+                # Save file temporarily
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                file.save(filepath)
+                
+                # Upload to Supabase
+                file_id, file_url = supabase_service.upload_file(filepath)
+                
+                # Store file info in session
+                session['file_id'] = file_id
+                session['file_url'] = file_url
+                
+                # Process the document
                 extracted_data, csv_data = process_document(filepath)
                 
-                # Debug print
-                print("CSV data received:", csv_data[:200] if csv_data else "No CSV data")
-                
-                # Store in session for CSV download
+                # Store results in session
                 session['analysis_results'] = extracted_data
                 session['csv_data'] = csv_data
+                
+                # Clean up temporary file
+                os.remove(filepath)
                 
                 # Parse the extracted data for display
                 parsed_data = parse_api_response(extracted_data)
@@ -68,9 +78,6 @@ def download_csv():
     try:
         # Get the CSV data from the session
         csv_data = session.get('csv_data', '')
-        
-        # Debug print
-        print("Retrieved CSV data from session:", csv_data[:200] if csv_data else "No CSV data")
         
         # Check if we have actual data
         if not csv_data or csv_data.strip() == "":
