@@ -3,65 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contract Analysis Results</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <title>Lease Analysis Results</title>
     <style>
-        .results-table table {
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #333;
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4CAF50;
+        }
+        .results-table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed; /* Ensures the table layout is fixed */
+            margin-top: 15px;
         }
         .results-table th, .results-table td {
             border: 1px solid #ddd;
-            padding: 8px;
-            word-wrap: break-word; /* Ensures long words break to fit the cell */
-            overflow: hidden; /* Ensures overflow content is hidden */
+            padding: 12px;
+            text-align: left;
         }
         .results-table th {
             background-color: #4CAF50;
             color: white;
-            text-align: left;
         }
         .results-table tr:nth-child(even) {
             background-color: #f9f9f9;
         }
         .results-table tr:hover {
-            background-color: #ddd;
+            background-color: #f5f5f5;
+        }
+        .button-group {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #45a049;
         }
         .alert {
-            color: red;
-            font-weight: bold;
-        }
-        .tooltip {
-            position: relative;
-            display: inline-block;
-            cursor: pointer;
-        }
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 120px;
-            background-color: #555;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 5px 0;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%; /* Position the tooltip above the text */
-            left: 50%;
-            margin-left: -60px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Contract Analysis Results</h1>
+        <h1>Lease Analysis Results</h1>
         
         {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -70,9 +87,11 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
-        <div class="contract-table">
-            <table>
+
+        <!-- Section 1: Key Lease Information -->
+        <div class="section">
+            <h2>Section 1: Key Lease Information</h2>
+            <table class="results-table">
                 <thead>
                     <tr>
                         <th>Item</th>
@@ -81,51 +100,68 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% for row in key_info %}
                     <tr>
-                        <td>Lease Premises</td>
-                        <td>1</td>
-                        <td>Suite B, consisting of approximately 4300 square feet</td>
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
                     </tr>
-                    <tr>
-                        <td>Lease Term</td>
-                        <td>2</td>
-                        <td>5 years from Commencement Date</td>
-                    </tr>
-                    <tr>
-                        <td>Early Termination</td>
-                        <td>2.1</td>
-                        <td>Tenant may terminate after first year with 120 days' notice and $4,220 termination fee</td>
-                    </tr>
-                    <tr>
-                        <td>Rent Amount</td>
-                        <td>3.1</td>
-                        <td>$11.50/SF, totaling $49,450 annually, payable monthly at $4,120.83</td>
-                    </tr>
-                    <tr>
-                        <td>Security Deposit</td>
-                        <td>3.2</td>
-                        <td>Equal to one month's Base Rent</td>
-                    </tr>
-                    <tr>
-                        <td>Annual Rent Escalation</td>
-                        <td>3.3</td>
-                        <td>3% annual increase</td>
-                    </tr>
-                    <tr>
-                        <td>Triple Net Expenses</td>
-                        <td>3.4</td>
-                        <td>Estimated at $6.47/SF, totaling $27,821 annually, payable monthly at $2,318.42</td>
-                    </tr>
-                    <tr>
-                        <td>Utilities</td>
-                        <td>4</td>
-                        <td>Tenant to pay $2.50/SF for electric and gas</td>
-                    </tr>
-                    <!-- Add more rows for other contract terms -->
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
-        
+
+        <!-- Section 2: Lease Charges -->
+        <div class="section">
+            <h2>Section 2: Lease Charges</h2>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Charge Type</th>
+                        <th>Frequency</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in charges %}
+                    <tr>
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section 3: Lease Options -->
+        <div class="section">
+            <h2>Section 3: Lease Options</h2>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Option Type</th>
+                        <th>Expiration Date</th>
+                        <th>Latest Notice</th>
+                        <th>Earliest Notice</th>
+                        <th>Notice to Tenant</th>
+                        <th>Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in options %}
+                    <tr>
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
         <div class="button-group">
             <a href="{{ url_for('download_csv') }}" class="btn">Download CSV</a>
             <a href="/" class="btn">Upload Another</a>
