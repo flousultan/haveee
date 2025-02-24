@@ -18,55 +18,69 @@ def read_docx(filepath):
 
 def generate_prompt(text):
     prompt = """
-You are an expert lease analyst. Analyze the following commercial lease document and extract information into four specific sections:
+You are an expert lease analyst. Analyze the following commercial lease document and extract information into these specific sections. Format the output EXACTLY as shown below, maintaining the exact structure and headers:
 
-1. KEY LEASE INFORMATION TO EXTRACT:
+Section 1: Key Lease Information
+Create a table with these EXACT columns: Item | Paragraph Reference | Information
+Include these specific items:
 - Property Name
 - Property Address
-- Property ID/Number
+- Property ID or Number
 - Tenant Name
-- Rental Square Feet
-- Amendment Type (New Lease/Renewal/Holdover/Expansion/Contraction/Remeasurement/Termination/Amendment)
-- Lease Type (Office/Retail/Industrial)
-- Late Fee Details (Type, Amount, Grace Period)
+- Rental Square Feet of Tenant's Leased Premise
+- Amendment Type
+- Lease Type
+- Late Fee Calculation Type
+- Late Fee Amount or Rate
+- Late Fee Grace Period
 - Security Deposit Amount
-- Lease Holdover Amount/Rate
-- Tenant Contact Information (Billing, Phone, Email)
-- All Dates (Effective, Commencement, Expiration)
-- Suite Details (Number, Floor, Move-in/out dates, Square Feet)
-Use 'N/A' if information is not found.
+- Lease Holdover Amount or Rate
+- Tenant Billing Contact Name
+- Tenant Billing Address
+- Tenant Billing Address City/State/Zip
+- Tenant Phone
+- Tenant Fax
+- Tenant E-mail
+- Lease Effective Date or Execution Date
+- Lease Commencement Date
+- Lease Expiration Date
+- Leased Suite Number
+- Suite Floor Number
+- Suite Move-In Date
+- Suite Move-Out Date
+- Suite Rentable Square Feet
 
-2. LEASE CHARGES TABLE
-Create a table with columns: Charge Type | Frequency | Start Date | End Date | Amount
+Section 2: Lease Charges
+Create a table with these EXACT columns: Charge Type | Frequency | Start Date | End Date | Amount
 Include:
-- All mandatory charges with specific amounts
-- Charges that increase over time (show each period)
-- Convert to monthly amounts where needed
-- Format amounts with commas and two decimal places
-Exclude conditional charges.
+- Base Rent for each year with specific amounts
+- All recurring charges (CAM, utilities, etc.)
+- Format dates as MM/DD/YYYY
+- Format amounts with dollar sign and commas (e.g., $1,234.56)
+- Show each period separately for escalating charges
 
-3. LEASE OPTIONS TABLE
-Create a table with columns: Option Type | Expiration Date | Latest Notice | Earliest Notice | Notice to Tenant | Reference
-Include only true legal options with predetermined terms.
-
-4. LEASE CLAUSES TABLE
-Create a table with columns: Section Title | Section Reference Number | Lease Clause
-Include verbatim language for all sections and subsections.
+Section 3: Lease Options
+Create a table with these EXACT columns: Option Type | Expiration Date | Latest Notice | Earliest Notice | Notice to Tenant | Reference
+Include:
+- All lease options (renewal, termination, expansion, etc.)
+- Format dates as MM/DD/YYYY
+- Include specific section references
+- Use N/A for any missing information
 
 FORMATTING RULES:
-- Use commas in numbers (e.g., 1,000.00)
-- Dates in MM/DD/YYYY format
-- Use specified options for Amendment Type, Lease Type, Late Fee Type
-- Present each section in a clearly formatted table
-- Use '|' as column separator
-- Start each new table with a clear header
+1. Use exact column names as specified
+2. Format all dates as MM/DD/YYYY
+3. Format all currency with $ and commas
+4. Use N/A for missing information
+5. Include paragraph/section references where available
+6. Maintain consistent capitalization
+7. Each section must start with the exact section header shown above
 
 Here is the document to analyze:
 
 {text}
 
-Analyze thoroughly and ensure no critical information is omitted. If any details are unclear, note that clarification may be needed.
-"""
+Analyze thoroughly and ensure all sections are properly formatted as specified above."""
     return prompt
 
 def send_to_api(prompt):
@@ -85,7 +99,7 @@ def send_to_api(prompt):
                 "content": prompt
             }
         ],
-        "max_tokens": 1000
+        "max_tokens": 4000  # Increased token limit
     }
     
     try:
@@ -106,9 +120,7 @@ def send_to_api(prompt):
 def parse_api_response(response_text):
     """Parse the API response into structured data"""
     try:
-        # Split the response into sections
         sections = response_text.split('\n\n')
-        
         tables = {
             'key_info': [],
             'charges': [],
@@ -117,35 +129,33 @@ def parse_api_response(response_text):
         }
         
         current_section = None
+        headers_seen = False
         
         for section in sections:
-            if 'KEY LEASE INFORMATION' in section.upper():
+            if 'Section 1: Key Lease Information' in section:
                 current_section = 'key_info'
-            elif 'LEASE CHARGES' in section.upper():
+                headers_seen = False
+            elif 'Section 2: Lease Charges' in section:
                 current_section = 'charges'
-            elif 'LEASE OPTIONS' in section.upper():
+                headers_seen = False
+            elif 'Section 3: Lease Options' in section:
                 current_section = 'options'
-            elif 'LEASE CLAUSES' in section.upper():
-                current_section = 'clauses'
+                headers_seen = False
             
             if current_section and '|' in section:
                 rows = [row.strip() for row in section.split('\n') if row.strip() and '|' in row]
-                parsed_rows = []
                 for row in rows:
-                    # Skip header rows
-                    if 'Item' in row and 'Reference' in row:
+                    if not headers_seen:
+                        headers_seen = True
                         continue
-                    if '---' in row:
+                    if '---' in row:  # Skip separator rows
                         continue
                         
                     cells = [cell.strip() for cell in row.split('|') if cell.strip()]
                     if cells:
-                        parsed_rows.append(cells)
-                
-                tables[current_section].extend(parsed_rows)
+                        tables[current_section].append(cells)
         
         return tables
-    
     except Exception as e:
         print(f"Error parsing API response: {e}")
         return {
@@ -159,63 +169,30 @@ def convert_to_csv(tables):
     """Convert parsed tables to CSV format"""
     csv_data = []
     
-    # Debug print
-    print("Converting to CSV. Tables received:", tables)
-    
-    # Convert key info
+    # Section 1: Key Lease Information
     if tables['key_info']:
-        csv_data.append(['KEY LEASE INFORMATION'])
-        for item in tables['key_info']:
-            if isinstance(item, list):
-                csv_data.append(item)
-            else:
-                # If it's not a list, try to split it by the separator
-                parts = [part.strip() for part in str(item).split('|')]
-                csv_data.append(parts)
+        csv_data.append(['Section 1: Key Lease Information'])
+        csv_data.append(['Item', 'Paragraph Reference', 'Information'])
+        csv_data.extend(tables['key_info'])
+        csv_data.append([])  # Empty row for separation
     
-    # Convert charges
+    # Section 2: Lease Charges
     if tables['charges']:
-        csv_data.append([])  # Empty row for separation
-        csv_data.append(['LEASE CHARGES'])
+        csv_data.append(['Section 2: Lease Charges'])
         csv_data.append(['Charge Type', 'Frequency', 'Start Date', 'End Date', 'Amount'])
-        for charge in tables['charges']:
-            if isinstance(charge, list):
-                csv_data.append(charge)
-            else:
-                parts = [part.strip() for part in str(charge).split('|')]
-                csv_data.append(parts)
+        csv_data.extend(tables['charges'])
+        csv_data.append([])
     
-    # Convert options
+    # Section 3: Lease Options
     if tables['options']:
-        csv_data.append([])  # Empty row for separation
-        csv_data.append(['LEASE OPTIONS'])
+        csv_data.append(['Section 3: Lease Options'])
         csv_data.append(['Option Type', 'Expiration Date', 'Latest Notice', 'Earliest Notice', 'Notice to Tenant', 'Reference'])
-        for option in tables['options']:
-            if isinstance(option, list):
-                csv_data.append(option)
-            else:
-                parts = [part.strip() for part in str(option).split('|')]
-                csv_data.append(parts)
+        csv_data.extend(tables['options'])
     
-    # Convert clauses
-    if tables['clauses']:
-        csv_data.append([])  # Empty row for separation
-        csv_data.append(['LEASE CLAUSES'])
-        csv_data.append(['Section Title', 'Section Reference Number', 'Lease Clause'])
-        for clause in tables['clauses']:
-            if isinstance(clause, list):
-                csv_data.append(clause)
-            else:
-                parts = [part.strip() for part in str(clause).split('|')]
-                csv_data.append(parts)
-    
-    # Debug print
-    print("CSV data before conversion:", csv_data)
-    
-    # Convert to CSV string
+    # Convert to CSV
     if not csv_data:
         return "No data available"
-        
+    
     df = pd.DataFrame(csv_data)
     return df.to_csv(index=False, header=False)
 
