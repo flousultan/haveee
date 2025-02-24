@@ -20,9 +20,7 @@ def generate_prompt(text):
     prompt = """
 You are an expert lease analyst. Analyze the following commercial lease document and extract information into four specific sections:
 
-1. KEY LEASE INFORMATION TABLE
-Create a table with columns: Item | Paragraph Reference | Information
-Include:
+1. KEY LEASE INFORMATION TO EXTRACT:
 - Property Name
 - Property Address
 - Property ID/Number
@@ -105,22 +103,6 @@ def send_to_api(prompt):
         print(f"Other error occurred: {err}")
         raise
 
-def process_document(filepath):
-    ext = filepath.rsplit(".", 1)[1].lower()
-    if ext == "pdf":
-        text = read_pdf(filepath)
-    elif ext == "docx":
-        text = read_docx(filepath)
-    else:
-        raise ValueError("Unsupported file type")
-    
-    prompt = generate_prompt(text)
-    api_response = send_to_api(prompt)
-    
-    # Updated to match Claude 3 API response structure
-    extracted_data = api_response.get("content")[0].get("text")
-    return extracted_data
-
 def parse_api_response(response_text):
     """Parse the API response into structured data"""
     try:
@@ -172,3 +154,89 @@ def parse_api_response(response_text):
             'options': [],
             'clauses': []
         }
+
+def convert_to_csv(tables):
+    """Convert parsed tables to CSV format"""
+    csv_data = []
+    
+    # Debug print
+    print("Converting to CSV. Tables received:", tables)
+    
+    # Convert key info
+    if tables['key_info']:
+        csv_data.append(['KEY LEASE INFORMATION'])
+        for item in tables['key_info']:
+            if isinstance(item, list):
+                csv_data.append(item)
+            else:
+                # If it's not a list, try to split it by the separator
+                parts = [part.strip() for part in str(item).split('|')]
+                csv_data.append(parts)
+    
+    # Convert charges
+    if tables['charges']:
+        csv_data.append([])  # Empty row for separation
+        csv_data.append(['LEASE CHARGES'])
+        csv_data.append(['Charge Type', 'Frequency', 'Start Date', 'End Date', 'Amount'])
+        for charge in tables['charges']:
+            if isinstance(charge, list):
+                csv_data.append(charge)
+            else:
+                parts = [part.strip() for part in str(charge).split('|')]
+                csv_data.append(parts)
+    
+    # Convert options
+    if tables['options']:
+        csv_data.append([])  # Empty row for separation
+        csv_data.append(['LEASE OPTIONS'])
+        csv_data.append(['Option Type', 'Expiration Date', 'Latest Notice', 'Earliest Notice', 'Notice to Tenant', 'Reference'])
+        for option in tables['options']:
+            if isinstance(option, list):
+                csv_data.append(option)
+            else:
+                parts = [part.strip() for part in str(option).split('|')]
+                csv_data.append(parts)
+    
+    # Convert clauses
+    if tables['clauses']:
+        csv_data.append([])  # Empty row for separation
+        csv_data.append(['LEASE CLAUSES'])
+        csv_data.append(['Section Title', 'Section Reference Number', 'Lease Clause'])
+        for clause in tables['clauses']:
+            if isinstance(clause, list):
+                csv_data.append(clause)
+            else:
+                parts = [part.strip() for part in str(clause).split('|')]
+                csv_data.append(parts)
+    
+    # Debug print
+    print("CSV data before conversion:", csv_data)
+    
+    # Convert to CSV string
+    if not csv_data:
+        return "No data available"
+        
+    df = pd.DataFrame(csv_data)
+    return df.to_csv(index=False, header=False)
+
+def process_document(filepath):
+    ext = filepath.rsplit(".", 1)[1].lower()
+    if ext == "pdf":
+        text = read_pdf(filepath)
+    elif ext == "docx":
+        text = read_docx(filepath)
+    else:
+        raise ValueError("Unsupported file type")
+    
+    prompt = generate_prompt(text)
+    api_response = send_to_api(prompt)
+    
+    # Updated to match Claude 3 API response structure
+    extracted_data = api_response.get("content")[0].get("text")
+    parsed_data = parse_api_response(extracted_data)
+    
+    # Debug print
+    print("Parsed data:", parsed_data)
+    
+    csv_data = convert_to_csv(parsed_data)
+    return extracted_data, csv_data

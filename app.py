@@ -1,12 +1,14 @@
 import os
-from flask import Flask, render_template, request, send_file, redirect, url_for
+from flask import Flask, render_template, request, send_file, redirect, url_for, session, flash
 from werkzeug.utils import secure_filename
 import pandas as pd
 from serverless_wsgi import handle_request
-from extract import process_document
+from extract import process_document, parse_api_response
+import io
 
 app = Flask(__name__)
 app.config.from_object("config")
+app.secret_key = os.urandom(24)  # Add secret key for session management
 
 if not os.path.exists(app.config["UPLOAD_FOLDER"]):
     os.makedirs(app.config["UPLOAD_FOLDER"])
@@ -17,30 +19,79 @@ def allowed_file(filename):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
+        if "file" not in request.files:
+            flash("No file part")
+            return redirect(request.url)
+            
         file = request.files["file"]
+        if file.filename == "":
+            flash("No selected file")
+            return redirect(request.url)
+            
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
             file.save(filepath)
             
             try:
-                tables = process_document(filepath)
+                extracted_data, csv_data = process_document(filepath)
+                
+                # Debug print
+                print("CSV data received:", csv_data[:200] if csv_data else "No CSV data")
+                
+                # Store in session for CSV download
+                session['analysis_results'] = extracted_data
+                session['csv_data'] = csv_data
+                
+                # Parse the extracted data for display
+                parsed_data = parse_api_response(extracted_data)
                 return render_template(
                     "results.html",
-                    key_info=tables['key_info'],
-                    charges=tables['charges'],
-                    options=tables['options'],
-                    clauses=tables['clauses']
+                    key_info=parsed_data['key_info'],
+                    charges=parsed_data['charges'],
+                    options=parsed_data['options'],
+                    clauses=parsed_data['clauses']
                 )
             except Exception as e:
                 print(f"Error processing document: {e}")
-                return render_template("results.html", error="Error processing document")
+                flash(f"Error processing document: {str(e)}")
+                return redirect(url_for('index'))
+                
     return render_template("index.html")
 
-@app.route("/download")
+@app.route('/download_csv')
 def download_csv():
-    file_path = "output.csv"
-    return send_file(file_path, as_attachment=True)
+    if 'analysis_results' not in session:
+        flash('No analysis results available. Please upload a document first.')
+        return redirect(url_for('index'))
+    
+    try:
+        # Get the CSV data from the session
+        csv_data = session.get('csv_data', '')
+        
+        # Debug print
+        print("Retrieved CSV data from session:", csv_data[:200] if csv_data else "No CSV data")
+        
+        # Check if we have actual data
+        if not csv_data or csv_data.strip() == "":
+            flash('No CSV data available. Please try processing the document again.')
+            return redirect(url_for('index'))
+        
+        # Create a buffer
+        buffer = io.StringIO()
+        buffer.write(csv_data)
+        buffer.seek(0)
+        
+        return send_file(
+            io.BytesIO(buffer.getvalue().encode('utf-8')),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='lease_analysis.csv'
+        )
+    except Exception as e:
+        print(f"Error in download_csv: {str(e)}")
+        flash(f"Error downloading CSV: {str(e)}")
+        return redirect(url_for('index'))
 
 if __name__ == "__main__":
     app.run(debug=True)
